@@ -8,7 +8,6 @@ class CLI_Ubuntu:
 
     def cmd_line(self):
         params = {}
-        #try:
         parser = argparse.ArgumentParser(description="CLI") #объявление объекта
 
         parser.add_argument('--package-name', '-p',
