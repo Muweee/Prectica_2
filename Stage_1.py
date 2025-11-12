@@ -41,6 +41,12 @@ class CLI_Ubuntu:
                             help="path to test file with graph description"
                             )
 
+        parser.add_argument('--reverse-deps', '-r',
+                            type=str,
+                            required=True,
+                            help="show reverse dependencies for the given package"
+                            )
+
         try:
             args = parser.parse_args()
             params['package_name'] = args.package_name
@@ -48,6 +54,7 @@ class CLI_Ubuntu:
             params['graph_name'] = args.graph_name
             params['test_mode'] = args.test_mode
             params['test_file'] = args.test_file
+            params['reverse_deps'] = args.reverse_deps
             return params
 
         except SystemExit:
@@ -222,6 +229,12 @@ class CLI_Ubuntu:
 
         dfs(package)
         return result
+    def get_reverse_dependencies(self, current_package):
+        reverse_deps = set()
+        for package, deps in self.graph.items():
+            if current_package in deps:
+                reverse_deps.add(package)
+        return reverse_deps
 
     def print_graph(self):
         print("\n==== Граф зависимостей ====")
@@ -256,6 +269,13 @@ class CLI_Ubuntu:
         transitive_deps = self.get_transitive_dependencies(start_package)
         print(f"\nТранзитивные зависимости для {start_package}: {', '.join(transitive_deps)}")
 
+        if self.params['reverse_deps']:
+            reverse_deps = self.get_reverse_dependencies(self.params['reverse_deps'])
+            if reverse_deps:
+                print(f"\nОбратные зависимости для {self.params['reverse_deps']}: {', '.join(reverse_deps)}")
+            else:
+                print(f"\nОбратные зависимости для {self.params['reverse_deps']}: не найдены")
+
         #print(f"\nВсего пакетов в графе: {len(self.graph)}")
 
 if __name__ == "__main__":
@@ -263,6 +283,8 @@ if __name__ == "__main__":
     print ("Строка для Ubuntu формата: python Stage_1.py -p aide -u questing")
     print("\nФайлы для тестового режима: test_cycles.txt, test.txt")
     print("Строка для тестового режима:python Stage_1.py -p A -u foo -t -f test.txt")
+    print("Строка для режима обратных зависимостей: python Stage_1.py -p A -u foo -t -f test_4.txt -r D")
+    print("Файлы для работы с зависимостями: test_4.txt")
 
     CLI = CLI_Ubuntu()
     CLI.run()
