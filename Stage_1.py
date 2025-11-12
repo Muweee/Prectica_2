@@ -5,7 +5,7 @@ import re
 class CLI_Ubuntu:
     def __init__(self):
         self.params = self.cmd_line()
-        #self.print_args()
+        self.print_args()
         self.Ubuntu_packages()
 
     def cmd_line(self):
@@ -46,17 +46,15 @@ class CLI_Ubuntu:
 
     def print_args(self):
         print(f"package-name:\t{self.params['package_name']}")
-        print(f"url:\t\t{self.params['url']}")
+        print(f"url:\t\thttps://packages.ubuntu.com/{self.params['url']}")
         print(f"graph_name:\t{self.params['graph_name']}")
     
     def Ubuntu_packages(self):
-        url =  f"https://{self.params['url']}/{self.params['package_name']}"
-        print(f"https://{self.params['url']}/{self.params['package_name']}")
+        url =  f"https://packages.ubuntu.com/{self.params['url']}/{self.params['package_name']}"
+        print(f"https://packages.ubuntu.com/{self.params['url']}/{self.params['package_name']}")
 
         file = urllib.request.urlopen(url)
         new_file = file.read()
-        # print(new_file)
-        new_file.decode("utf-8") #Битовый формат
 
         error_found = b'<h1>Error</h1>' #регулярка в битовый
         reg = re.search(error_found, new_file)
@@ -112,5 +110,5 @@ class CLI_Ubuntu:
                 i = i + 1
             print('Зависимые пакеты:', package_str)
 
-print("Package for example: aide/abyss \nURL format: packages.ubuntu.com/questing")
+print("Package for example: aide/abyss \nURL format: questing")
 CLI = CLI_Ubuntu()
