@@ -1,6 +1,7 @@
 import argparse
 import urllib.request
 import re
+from collections import deque
 
 class CLI_Ubuntu:
     def __init__(self):
@@ -40,13 +41,7 @@ class CLI_Ubuntu:
                             type=str,
                             help="path to test file with graph description"
                             )
-
-        parser.add_argument('--reverse-deps', '-r',
-                            type=str,
-                            required=True,
-                            help="show reverse dependencies for the given package"
-                            )
-
+        
         try:
             args = parser.parse_args()
             params['package_name'] = args.package_name
@@ -54,7 +49,6 @@ class CLI_Ubuntu:
             params['graph_name'] = args.graph_name
             params['test_mode'] = args.test_mode
             params['test_file'] = args.test_file
-            params['reverse_deps'] = args.reverse_deps
             return params
 
         except SystemExit:
@@ -155,33 +149,26 @@ class CLI_Ubuntu:
         else:
             return self.get_dependencies_from_Ubuntu(package_name)
 
-    def bfs_recursive(self, start_package, current_depth_recursive=0, max_depth_recursive=15):
-        if current_depth_recursive >= max_depth_recursive:
-            return
-
-        if start_package in self.visited:
-            return
-
-        if start_package in self.recursion_stack:
-            self.cycles.append(start_package)
-            return
-
-        self.visited.add(start_package)
-        self.recursion_stack.add(start_package)
-
-        dependencies = self.get_dependencies(start_package) #добываем зависимости нашего пакета
-        self.graph[start_package] = dependencies #первый элемент графа с разетвлением
-
-        #смотрим зависимости зависимых пакетов
-        for obj in dependencies:
-            self.bfs_recursive(obj, current_depth_recursive + 1, max_depth_recursive)
-
-        self.recursion_stack.remove(start_package)
+    def bfs_recursive(self, q, current_depth_recursive=0, max_depth_recursive=25):
+        while q:
+            
+            start_package = q.popleft()
+            
+            if start_package not in self.visited:
+                self.visited.add(start_package)
+                
+                dependencies = self.get_dependencies(start_package)  # добываем зависимости нашего пакета
+                self.graph[start_package] = dependencies  # первый элемент графа с разетвлением
+                
+                # добавляем в очередь зависимые пакеты
+                for obj in dependencies:
+                    if obj not in self.visited:
+                        q.append(obj)
+                        
+            self.bfs_recursive(q, current_depth_recursive + 1, max_depth_recursive)
 
     def detect_cycles(self):
         self.visited.clear()
-        self.recursion_stack.clear()
-        self.cycles.clear()
 
         all_keys = set(self.graph.keys())
         for key in all_keys:
@@ -191,25 +178,19 @@ class CLI_Ubuntu:
         return len(self.cycles) > 0
 
     def cycle_detection_dfs(self, key):
-        if key in self.recursion_stack: #вернулись к нему
+        if key in self.recursion_stack: #вернулись к узлу -> нашли цикл
             self.cycles.append(key)
             return
 
-        if key in self.visited: #уже посещали
+        if key in self.visited: #уже посещали и рассматривали
             return
 
         self.visited.add(key)
         self.recursion_stack.add(key)
 
-        if key in self.graph:
-            for dep in self.graph[key]:
-                if dep in self.graph:  #если зависимость есть в графе
-                    self.cycle_detection_dfs(dep)
-                else:
-                    #если зависимости нет в графе
-                    if dep not in self.visited:
-                        self.graph[dep] = self.get_dependencies(dep)
-                        self.cycle_detection_dfs(dep)
+        for dep in self.graph[key]:
+            if dep in self.graph:  #если зависимость есть в ключах графа
+                self.cycle_detection_dfs(dep)
 
         self.recursion_stack.remove(key)
 
@@ -229,13 +210,7 @@ class CLI_Ubuntu:
 
         dfs(package)
         return result
-    def get_reverse_dependencies(self, current_package):
-        reverse_deps = set()
-        for package, deps in self.graph.items():
-            if current_package in deps:
-                reverse_deps.add(package)
-        return reverse_deps
-
+   
     def print_graph(self):
         print("\n==== Граф зависимостей ====")
         for key_package, deps in self.graph.items():
@@ -259,22 +234,17 @@ class CLI_Ubuntu:
         start_package = self.params['package_name']
         print(f"Граф зависимостей для пакета: {start_package}")
 
-        self.bfs_recursive(start_package)
+        q = deque()
+        q.append(start_package)
+        self.bfs_recursive(q)  # теперь есть граф и посещенные
 
-        self.detect_cycles()
+        self.detect_cycles() #в поисках циклов
 
         self.print_graph()
         self.print_cycles()
 
         transitive_deps = self.get_transitive_dependencies(start_package)
         print(f"\nТранзитивные зависимости для {start_package}: {', '.join(transitive_deps)}")
-
-        if self.params['reverse_deps']:
-            reverse_deps = self.get_reverse_dependencies(self.params['reverse_deps'])
-            if reverse_deps:
-                print(f"\nОбратные зависимости для {self.params['reverse_deps']}: {', '.join(reverse_deps)}")
-            else:
-                print(f"\nОбратные зависимости для {self.params['reverse_deps']}: не найдены")
 
         #print(f"\nВсего пакетов в графе: {len(self.graph)}")
 
@@ -283,8 +253,6 @@ if __name__ == "__main__":
     print ("Строка для Ubuntu формата: python Stage_1.py -p aide -u questing")
     print("\nФайлы для тестового режима: test_cycles.txt, test.txt")
     print("Строка для тестового режима:python Stage_1.py -p A -u foo -t -f test.txt")
-    print("Строка для режима обратных зависимостей: python Stage_1.py -p A -u foo -t -f test_4.txt -r D")
-    print("Файлы для работы с зависимостями: test_4.txt")
 
     CLI = CLI_Ubuntu()
     CLI.run()
