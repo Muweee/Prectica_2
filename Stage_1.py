@@ -10,6 +10,7 @@ class CLI_Ubuntu:
         self.visited = set()
         self.recursion_stack = set()
         self.cycles = []
+        self.reverse_deps = set()
 
     def cmd_line(self):
         params = {}
@@ -218,12 +219,16 @@ class CLI_Ubuntu:
         dfs(package)
         return result
 
-    def get_reverse_dependencies(self, current_package):
-        reverse_deps = set()
+    def get_reverse_dependencies(self, current_package, current_deep = 0, max_deep = 4):
+        if current_deep >= max_deep:
+            return
+        if current_package in self.cycles:
+            return
         for package, deps in self.graph.items():
             if current_package in deps:
-                reverse_deps.add(package)
-        return reverse_deps
+                self.reverse_deps.add(package)
+                self.get_reverse_dependencies(package, current_deep + 1, max_deep)
+        return self.reverse_deps
    
     def print_graph(self):
         print("\n==== Граф зависимостей ====")
@@ -260,6 +265,7 @@ class CLI_Ubuntu:
         transitive_deps = self.get_transitive_dependencies(start_package)
         print(f"\nТранзитивные зависимости для {start_package}: {', '.join(transitive_deps)}")
         
+        
         if self.params['reverse_deps']:
             reverse_deps = self.get_reverse_dependencies(self.params['reverse_deps'])
             if reverse_deps:
@@ -275,6 +281,7 @@ if __name__ == "__main__":
     print("\nФайлы для тестового режима: test_cycles.txt, test.txt")
     print("Строка для тестового режима:python Stage_1.py -p A -u foo -t -f test.txt")
     print("Строка для режима обратных зависимостей: python Stage_1.py -p A -u foo -t -f test_4.txt -r D")
+    print("python Stage_1.py -p aide -u questing -r gcc-15-base")
     print("Файлы для работы с зависимостями: test_4.txt")
     
     CLI = CLI_Ubuntu()
