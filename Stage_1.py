@@ -2,6 +2,9 @@ import argparse
 import urllib.request
 import re
 from collections import deque
+import plantuml
+import requests
+
 
 class CLI_Ubuntu:
     def __init__(self):
@@ -29,8 +32,8 @@ class CLI_Ubuntu:
 
         parser.add_argument('--graph-name', '-g',
                             type=str,
-                            default='graph.png',
-                            help="name of graph file"
+                            default='graph.svg',
+                            help="name of graph svg file"
                             )
 
         parser.add_argument('--test-mode', '-t',
@@ -43,11 +46,11 @@ class CLI_Ubuntu:
                             help="path to test file with graph description"
                             )
         
-        parser.add_argument('--reverse-deps', '-r',
+        """parser.add_argument('--reverse-deps', '-r',
                             type=str,
                             required=True,
                             help="show reverse dependencies for the given package"
-                            )
+                            )"""
         
         try:
             args = parser.parse_args()
@@ -56,7 +59,7 @@ class CLI_Ubuntu:
             params['graph_name'] = args.graph_name
             params['test_mode'] = args.test_mode
             params['test_file'] = args.test_file
-            params['reverse_deps'] = args.reverse_deps
+            #params['reverse_deps'] = args.reverse_deps
             return params
 
         except SystemExit:
@@ -229,7 +232,60 @@ class CLI_Ubuntu:
                 self.reverse_deps.add(package)
                 self.get_reverse_dependencies(package, current_deep + 1, max_deep)
         return self.reverse_deps
-   
+
+    def generate_plantum(self):
+        lines = ["@startuml"]
+        for package, deps in self.graph.items():
+            for dep in deps:
+                lines.append(f' "{package}" -> "{dep}"')
+        lines.append("@enduml")
+        return "\n".join(lines)
+
+    def save_plantuml_to_svg(self):
+        """Сохраняет граф в SVG файл используя PlantUML"""
+
+        try:
+            # Генерируем PlantUML текст
+            plantuml_text = self.generate_plantum()
+            print("\n==== PlantUML код ====")
+            print(plantuml_text)
+
+            # Создаем клиент PlantUML
+            # Используем публичный сервер PlantUML
+            encode_text = plantuml.deflate_and_encode(plantuml_text)
+            # Альтернативный способ: сохраняем PlantUML код в файл
+
+            server_url = f"http://www.plantuml.com/plantuml/svg/{encode_text}"
+
+            print(f"Запрашиваем SVG с: {server_url}")
+
+            # Делаем запрос к серверу PlantUML
+            response = requests.get(server_url, timeout=30)
+            # Сохраняем в файл
+            output_file = self.params['graph_name']
+            if not output_file.endswith('.svg'):
+                output_file += '.svg'
+
+            if response.status_code == 200 and 'svg' in response.headers.get('Content-Type'):
+                # Получаем чистый SVG код
+                svg_content = response.text
+
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(svg_content)
+
+                print(f"\nГраф успешно сохранен в файл: {output_file}")
+                print(f"Размер SVG файла: {len(svg_content)} байт")
+            else:
+                print("\nОшибка: Не удалось сгенерировать SVG через PlantUML")
+
+        except Exception as e:
+            print(f"\nОшибка при сохранении SVG: {e}")
+
+    def save_svg(self):
+        uml_code = self.generate_plantum()
+        with open("graph.svg","w",encoding="utf-8") as f:
+            f.write(uml_code)
+
     def print_graph(self):
         print("\n==== Граф зависимостей ====")
         for key_package, deps in self.graph.items():
@@ -266,13 +322,15 @@ class CLI_Ubuntu:
         print(f"\nТранзитивные зависимости для {start_package}: {', '.join(transitive_deps)}")
         
         
-        if self.params['reverse_deps']:
-            reverse_deps = self.get_reverse_dependencies(self.params['reverse_deps'])
-            if reverse_deps:
-                print(f"\nОбратные зависимости для {self.params['reverse_deps']}: {', '.join(reverse_deps)}")
-            else:
-                print(f"\nОбратные зависимости для {self.params['reverse_deps']}: не найдены")
+        # if self.params['reverse_deps']:
+        #     reverse_deps = self.get_reverse_dependencies(self.params['reverse_deps'])
+        #     if reverse_deps:
+        #         print(f"\nОбратные зависимости для {self.params['reverse_deps']}: {', '.join(reverse_deps)}")
+        #     else:
+        #         print(f"\nОбратные зависимости для {self.params['reverse_deps']}: не найдены")
 
+        # self.save_svg()
+        self.save_plantuml_to_svg()
         #print(f"\nВсего пакетов в графе: {len(self.graph)}")
 
 if __name__ == "__main__":
