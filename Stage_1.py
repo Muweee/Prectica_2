@@ -242,7 +242,6 @@ class CLI_Ubuntu:
         return "\n".join(lines)
 
     def save_plantuml_to_svg(self):
-        """Сохраняет граф в SVG файл используя PlantUML"""
 
         try:
             # Генерируем PlantUML текст
@@ -250,24 +249,22 @@ class CLI_Ubuntu:
             print("\n==== PlantUML код ====")
             print(plantuml_text)
 
-            # Создаем клиент PlantUML
             # Используем публичный сервер PlantUML
             encode_text = plantuml.deflate_and_encode(plantuml_text)
-            # Альтернативный способ: сохраняем PlantUML код в файл
 
             server_url = f"http://www.plantuml.com/plantuml/svg/{encode_text}"
 
             print(f"Запрашиваем SVG с: {server_url}")
 
-            # Делаем запрос к серверу PlantUML
+            #Делаем запрос к серверу PlantUML
             response = requests.get(server_url, timeout=30)
-            # Сохраняем в файл
+            #Сохраняем в файл
             output_file = self.params['graph_name']
             if not output_file.endswith('.svg'):
                 output_file += '.svg'
 
             if response.status_code == 200 and 'svg' in response.headers.get('Content-Type'):
-                # Получаем чистый SVG код
+                #Получаем чистый SVG код
                 svg_content = response.text
 
                 with open(output_file, 'w', encoding='utf-8') as f:
