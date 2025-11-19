@@ -161,8 +161,9 @@ class CLI_Ubuntu:
             return self.get_dependencies_from_Ubuntu(package_name)
 
     def bfs_recursive(self, q):
-        while q:
-            
+            if not q:
+                return
+
             start_package = q.popleft()
             
             if start_package not in self.visited:
@@ -175,7 +176,7 @@ class CLI_Ubuntu:
                 for obj in dependencies:
                     if obj not in self.visited:
                         q.append(obj)
-                        
+
             self.bfs_recursive(q)
 
     def detect_cycles(self):
